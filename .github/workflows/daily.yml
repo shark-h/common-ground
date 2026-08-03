@@ -1,0 +1,28 @@
+name: daily-door
+on:
+  schedule:
+    - cron: "7 0 * * *" # shortly after midnight UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  commit-and-reveal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Seal today, reveal yesterday
+        env:
+          DAILY_SEED: ${{ secrets.DAILY_SEED }}
+        run: node daily/make-day.mjs
+      - name: Publish
+        run: |
+          git config user.name "daily-door"
+          git config user.email "actions@github.com"
+          git add daily/log.json
+          git diff --cached --quiet || git commit -m "daily door: $(date -u +%F)"
+          git push
