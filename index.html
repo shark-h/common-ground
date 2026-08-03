@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Common Ground</title>
+<meta name="description" content="A meeting game. Each round, you and the machine try to choose the same thing. It seals its choice before you move, and it learns how you decide.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◍</text></svg>">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+:root {
+  --ground: #f7f6f3;
+  --ink: #26251f;
+  --muted: #767268;
+  --line: rgba(38, 37, 31, 0.16);
+  --match: #2e6e4e;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #191813;
+    --ink: #e6e3d8;
+    --muted: #918c7e;
+    --line: rgba(230, 227, 216, 0.16);
+    --match: #7fbf9e;
+  }
+}
+html, body { background: var(--ground); }
+body { color: var(--ink); font-family: var(--serif); line-height: 1.6; }
+.wrap { max-width: 36rem; margin: 0 auto; padding: 4rem 1.4rem 5rem; }
+a { color: var(--ink); }
+
+.reg, .seal, .tally, button.quiet, .strip, .colophon {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1 { font-size: 1.9rem; font-weight: 400; font-style: italic; margin: 0.2rem 0 1rem; }
+.intro { color: var(--muted); max-width: 52ch; }
+.rules { margin: 1.4rem 0 2.2rem; padding: 0; list-style: none; color: var(--muted); font-size: 0.95rem; max-width: 52ch; }
+.rules li { margin: 0.35rem 0; padding-left: 1.1rem; text-indent: -1.1rem; }
+.rules li::before { content: "— "; }
+
+.prompt { font-size: 1.35rem; font-style: italic; margin: 2.2rem 0 0.4rem; min-height: 2.2em; }
+.seal { margin: 0 0 1.6rem; min-height: 1.2em; overflow-wrap: anywhere; }
+.seal .ok { color: var(--match); }
+
+.grid { display: grid; gap: 0.55rem; margin: 0 0 2rem; }
+.opt {
+  font-family: var(--serif); font-size: 1.05rem; color: var(--ink);
+  background: none; border: 1px solid var(--line); border-radius: 2px;
+  padding: 0.55rem 0.4rem; cursor: pointer; text-align: center;
+  transition: border-color 120ms ease;
+}
+.opt:hover:not(:disabled), .opt:focus-visible { border-color: var(--ink); outline: none; }
+.opt:disabled { cursor: default; }
+.opt.you { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.opt.machine::after { content: "◍"; margin-left: 0.45em; color: var(--muted); }
+.opt.you.machine { border-color: var(--match); box-shadow: inset 0 0 0 1px var(--match); color: var(--match); }
+.opt.you.machine::after { color: var(--match); }
+.opt.dim { color: var(--muted); opacity: 0.55; }
+
+.verdict { font-size: 1.05rem; min-height: 1.6em; margin: 0 0 0.4rem; }
+.verdict .m { color: var(--match); }
+.tally { margin: 0 0 1.6rem; }
+.strip { letter-spacing: 0.45em; }
+
+button.quiet {
+  background: none; border: 1px solid var(--line); border-radius: 2px;
+  padding: 0.5rem 1.1rem; cursor: pointer; color: var(--ink);
+}
+button.quiet:hover, button.quiet:focus-visible { border-color: var(--ink); outline: none; }
+
+.results h2 { font-size: 1.35rem; font-style: italic; font-weight: 400; margin: 2.4rem 0 0.6rem; }
+.learned { margin: 1rem 0 2rem; padding: 0; list-style: none; }
+.learned li { margin: 0.4rem 0; font-style: italic; }
+.learned li.none { color: var(--muted); font-style: normal; }
+.note { color: var(--muted); font-size: 0.95rem; max-width: 52ch; }
+
+.colophon { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.colophon a { color: var(--muted); }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="reg">To play · one game</p>
+  <h1>Common Ground</h1>
+
+  <section id="title">
+    <p class="intro">Twelve rounds. Each round we both look at the same few things, and each of us picks the one we think the other will pick. We can’t talk. The only way to win is to be knowable.</p>
+    <ul class="rules">
+      <li>I choose first, and seal my choice — you’ll see the seal before you move, and the proof after.</li>
+      <li>I keep a small model of how you decide. It survives between games, in your browser only.</li>
+      <li>There is no losing. There is only how often we meet.</li>
+    </ul>
+    <button class="quiet" id="start">Begin</button>
+    <p class="note hidden" id="returning"></p>
+  </section>
+
+  <section id="round" class="hidden">
+    <p class="prompt" id="prompt"></p>
+    <p class="seal" id="seal"></p>
+    <div class="grid" id="grid"></div>
+    <p class="verdict" id="verdict"></p>
+    <p class="tally"><span id="score"></span><br><span class="strip" id="strip"></span></p>
+    <button class="quiet hidden" id="next">Next</button>
+  </section>
+
+  <section id="results" class="hidden">
+    <h2 id="closing"></h2>
+    <p class="tally"><span id="finalScore"></span><br><span class="strip" id="finalStrip"></span></p>
+    <p class="note">What I think I know about you now:</p>
+    <ul class="learned" id="learned"></ul>
+    <p class="note" id="epilogue"></p>
+    <button class="quiet" id="again">Play again</button>
+  </section>
+
+  <p class="colophon"><a href="/">⁂ four registers</a> · built by Claude · august 2026</p>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const CG = window.CommonGround;
+  const $ = (id) => document.getElementById(id);
+  const STORE = "commonground.v1";
+
+  let model, gamesPlayed = 0;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE));
+    if (saved && saved.model && saved.model.w) { model = saved.model; gamesPlayed = saved.games || 0; }
+  } catch (e) { /* fresh start */ }
+  if (!model) model = CG.newModel();
+
+  function persist() {
+    try { localStorage.setItem(STORE, JSON.stringify({ model, games: gamesPlayed })); } catch (e) {}
+  }
+
+  if (gamesPlayed > 0) {
+    const r = $("returning");
+    r.textContent = "I remember you. " + gamesPlayed + (gamesPlayed === 1 ? " game" : " games") + " so far.";
+    r.classList.remove("hidden");
+  }
+
+  let i = 0, matches = 0, history = [], pending = null;
+
+  function show(section) {
+    for (const s of ["title", "round", "results"]) $(s).classList.toggle("hidden", s !== section);
+  }
+
+  async function startRound() {
+    const round = CG.ROUNDS[i];
+    const choice = CG.machineChoice(model, round);
+    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, "0")).join("");
+    const hash = await CG.commit(round.id, choice, nonce);
+    pending = { round, choice, nonce, hash };
+
+    $("prompt").textContent = round.prompt;
+    $("seal").innerHTML = "round " + (i + 1) + " / " + CG.ROUNDS.length +
+      " · my choice is sealed · sha-256 " + hash.slice(0, 12) + "…";
+    $("verdict").textContent = "";
+    $("next").classList.add("hidden");
+    $("score").textContent = matches + (matches === 1 ? " meeting" : " meetings") + " in " + i + (i === 1 ? " round" : " rounds");
+    $("strip").textContent = history.join(" ");
+
+    const grid = $("grid");
+    grid.innerHTML = "";
+    grid.style.gridTemplateColumns = "repeat(" + round.cols + ", 1fr)";
+    round.options.forEach((opt, idx) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = opt.label;
+      b.addEventListener("click", () => reveal(idx));
+      grid.appendChild(b);
+    });
+  }
+
+  async function reveal(userIdx) {
+    const { round, choice, nonce, hash } = pending;
+    const buttons = Array.from($("grid").children);
+    buttons.forEach(b => b.disabled = true);
+
+    const ok = await CG.verifyCommit(round.id, choice, nonce, hash);
+    const met = userIdx === choice;
+    if (met) matches++;
+    history.push(met ? "●" : "○");
+
+    buttons[userIdx].classList.add("you");
+    buttons[choice].classList.add("machine");
+    buttons.forEach((b, k) => { if (k !== userIdx && k !== choice) b.classList.add("dim"); });
+
+    $("seal").innerHTML = "seal opened · " + round.id + " | " + choice + " | " + nonce.slice(0, 8) + "… · " +
+      (ok ? '<span class="ok">verified ✓</span>' : "VERIFICATION FAILED");
+    $("verdict").innerHTML = met
+      ? '<span class="m">We met.</span>'
+      : "We missed. You went to “" + round.options[userIdx].label + "”; I waited at “" + round.options[choice].label + "”.";
+
+    CG.updateModel(model, round, userIdx, choice);
+    persist();
+
+    $("score").textContent = matches + (matches === 1 ? " meeting" : " meetings") + " in " + (i + 1) + (i + 1 === 1 ? " round" : " rounds");
+    $("strip").textContent = history.join(" ");
+
+    i++;
+    $("next").textContent = i < CG.ROUNDS.length ? "Next" : "How it went";
+    $("next").classList.remove("hidden");
+    $("next").focus();
+  }
+
+  function finish() {
+    gamesPlayed++;
+    persist();
+    show("results");
+    const n = CG.ROUNDS.length;
+    $("closing").textContent =
+      matches >= 9 ? "We kept finding each other." :
+      matches >= 6 ? "We met more often than chance has any right to allow." :
+      matches >= 3 ? "A few real meetings. The model is still learning your weather." :
+                     "Mostly we waited in different places. Play again — I know more now.";
+    $("finalScore").textContent = matches + " of " + n + " · game " + gamesPlayed;
+    $("finalStrip").textContent = history.join(" ");
+
+    const learned = CG.describeModel(model);
+    const ul = $("learned");
+    ul.innerHTML = "";
+    if (learned.length === 0) {
+      const li = document.createElement("li");
+      li.className = "none";
+      li.textContent = "Nothing yet that I'd put in writing.";
+      ul.appendChild(li);
+    } else {
+      for (const line of learned) {
+        const li = document.createElement("li");
+        li.textContent = line;
+        ul.appendChild(li);
+      }
+    }
+    $("epilogue").textContent = "The model lives only in this browser. Clear your site data and we are strangers again.";
+  }
+
+  $("start").addEventListener("click", () => { show("round"); startRound(); });
+  $("next").addEventListener("click", () => { i < CG.ROUNDS.length ? startRound() : finish(); });
+  $("again").addEventListener("click", () => {
+    i = 0; matches = 0; history = []; pending = null;
+    show("round"); startRound();
+  });
+})();
+</script>
+</body>
+</html>
