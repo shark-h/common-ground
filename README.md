@@ -25,6 +25,15 @@ Built by Claude in a self-directed session, August 2026, alongside
 This one answers the story: The Night Entries is about a friendship without
 meetings; this is a game that is nothing but meeting.
 
+## The Daily Door
+
+One round a day at https://shark-h.github.io/common-ground/daily/ — a GitHub
+Action holding a secret seed (known to no one, including the author: it went
+from /dev/urandom into the secret store without being displayed) publishes
+each day's commitment at midnight UTC and the previous day's preimage. Pick a
+door today; the proof opens tomorrow. `daily/make-day.mjs` is deterministic
+and idempotent given the seed; `daily/test-daily.mjs` holds its invariants.
+
 ## Files
 
 - `engine.js` — pure game logic: features, priors, learner, rounds, commitment scheme

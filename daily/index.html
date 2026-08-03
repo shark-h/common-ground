@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Daily Door</title>
+<meta name="description" content="One round of Common Ground a day. Pick a door today; find out tomorrow whether we met. The commitment is published before you choose and the proof the day after.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>◍</text></svg>">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+:root {
+  --ground: #f7f6f3;
+  --ink: #26251f;
+  --muted: #767268;
+  --line: rgba(38, 37, 31, 0.16);
+  --match: #2e6e4e;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #191813;
+    --ink: #e6e3d8;
+    --muted: #918c7e;
+    --line: rgba(230, 227, 216, 0.16);
+    --match: #7fbf9e;
+  }
+}
+html, body { background: var(--ground); }
+body { color: var(--ink); font-family: var(--serif); line-height: 1.6; }
+.wrap { max-width: 36rem; margin: 0 auto; padding: 4rem 1.4rem 5rem; }
+a { color: var(--ink); }
+.reg, .seal, .tally, .colophon {
+  font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+}
+h1 { font-size: 1.9rem; font-weight: 400; font-style: italic; margin: 0.2rem 0 1rem; }
+.note { color: var(--muted); font-size: 0.95rem; max-width: 52ch; }
+.prompt { font-size: 1.35rem; font-style: italic; margin: 2rem 0 0.4rem; }
+.seal { margin: 0 0 1.4rem; min-height: 1.2em; overflow-wrap: anywhere; }
+.seal .ok { color: var(--match); }
+.grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.55rem; margin: 0 0 1.6rem; }
+.opt {
+  font-family: var(--serif); font-size: 1.05rem; color: var(--ink);
+  background: none; border: 1px solid var(--line); border-radius: 2px;
+  padding: 0.55rem 0.4rem; cursor: pointer; text-align: center;
+  transition: border-color 120ms ease;
+}
+.opt:hover:not(:disabled), .opt:focus-visible { border-color: var(--ink); outline: none; }
+.opt:disabled { cursor: default; }
+.opt.you { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.opt.machine::after { content: " ◍"; color: var(--muted); }
+.opt.you.machine { border-color: var(--match); box-shadow: inset 0 0 0 1px var(--match); color: var(--match); }
+.opt.dim { color: var(--muted); opacity: 0.55; }
+.verdict { font-size: 1.05rem; min-height: 1.6em; margin: 0.4rem 0; }
+.verdict .m { color: var(--match); }
+.tally { margin: 1.4rem 0 0; }
+.yesterday { border-top: 1px solid var(--line); margin-top: 2.4rem; padding-top: 1.4rem; }
+.yesterday h2 { font-size: 1.05rem; font-style: italic; font-weight: 400; margin: 0 0 0.4rem; }
+.colophon { margin-top: 4rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.colophon a { color: var(--muted); }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="reg">Common ground · one round a day</p>
+  <h1>The Daily Door</h1>
+  <p class="note">Every midnight UTC, a machine that answers to no one — not even the author — seals its choice of one door in twenty-five and publishes the hash. Pick yours today; the proof opens tomorrow. Like a shared logbook: you find out whether we met one day late, every day.</p>
+
+  <p class="prompt" id="prompt">Twenty-five doors. We each open one.</p>
+  <p class="seal" id="seal">loading the log…</p>
+  <div class="grid" id="grid"></div>
+  <p class="verdict" id="verdict"></p>
+  <p class="tally" id="tally"></p>
+
+  <div class="yesterday hidden" id="yesterday">
+    <h2 id="ydate"></h2>
+    <p class="seal" id="yseal"></p>
+    <p class="verdict" id="yverdict"></p>
+  </div>
+
+  <p class="colophon"><a href="/common-ground/">◍ the full game</a> · <a href="/">⁂ four registers</a> · built by claude · august 2026</p>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const STORE = "commonground.daily.v1";
+  const utcToday = () => new Date().toISOString().slice(0, 10);
+
+  let picks = {};
+  try { picks = JSON.parse(localStorage.getItem(STORE)) || {}; } catch (e) {}
+  const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(picks)); } catch (e) {} };
+
+  async function sha256hex(s) {
+    const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function doorLabel(i) { return String(i + 1); }
+
+  async function main() {
+    let log;
+    try {
+      const res = await fetch("log.json?t=" + Date.now());
+      log = await res.json();
+    } catch (e) {
+      $("seal").textContent = "could not load the log — try again later";
+      return;
+    }
+    const today = utcToday();
+    const byDate = Object.fromEntries(log.days.map(d => [d.date, d]));
+    const todayEntry = byDate[today];
+
+    // --- today ---
+    const grid = $("grid");
+    grid.innerHTML = "";
+    const already = picks[today];
+    for (let i = 0; i < (log.doors || 25); i++) {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = doorLabel(i);
+      if (already != null) {
+        b.disabled = true;
+        if (i === already) b.classList.add("you"); else b.classList.add("dim");
+      } else if (!todayEntry) {
+        b.disabled = true; b.classList.add("dim");
+      } else {
+        b.addEventListener("click", () => {
+          picks[today] = i; persist(); main();
+        });
+      }
+      grid.appendChild(b);
+    }
+
+    if (!todayEntry) {
+      $("seal").textContent = today + " · today's seal hasn't been published yet — come back in a little while";
+    } else {
+      $("seal").textContent = today + " · the day's door is sealed · sha-256 " + todayEntry.hash.slice(0, 16) + "…";
+    }
+    $("verdict").textContent = already != null
+      ? "You wait at door " + doorLabel(already) + ". The seal opens tomorrow."
+      : (todayEntry ? "" : "");
+
+    // --- running tally over all revealed days you played ---
+    let met = 0, played = 0;
+    for (const [date, pick] of Object.entries(picks)) {
+      const day = byDate[date];
+      if (day && day.choice != null) { played++; if (day.choice === pick) met++; }
+    }
+    $("tally").textContent = played
+      ? met + (met === 1 ? " meeting" : " meetings") + " in " + played + " revealed " + (played === 1 ? "day" : "days")
+      : "";
+
+    // --- most recent revealed day you played ---
+    const revealedPlayed = Object.keys(picks)
+      .filter(d => byDate[d] && byDate[d].choice != null)
+      .sort().reverse();
+    if (revealedPlayed.length) {
+      const date = revealedPlayed[0];
+      const day = byDate[date], pick = picks[date];
+      const ok = (await sha256hex("daily-" + date + "|" + day.choice + "|" + day.nonce)) === day.hash;
+      $("yesterday").classList.remove("hidden");
+      $("ydate").textContent = date;
+      $("yseal").innerHTML = "seal opened · door " + doorLabel(day.choice) + " | " + day.nonce.slice(0, 8) + "… · " +
+        (ok ? '<span class="ok">verified ✓</span>' : "VERIFICATION FAILED");
+      $("yverdict").innerHTML = day.choice === pick
+        ? '<span class="m">You met at door ' + doorLabel(day.choice) + ".</span>"
+        : "You waited at door " + doorLabel(pick) + "; the machine was at door " + doorLabel(day.choice) + ".";
+    }
+  }
+
+  main();
+})();
+</script>
+</body>
+</html>
