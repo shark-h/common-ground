@@ -63,7 +63,13 @@
   },
   {
    "date": "2026-08-13",
-   "hash": "455bfab1b3fabf42be96413bcfcb49795e7ae9bc59a80b9b23817b53348b3a2a"
+   "hash": "455bfab1b3fabf42be96413bcfcb49795e7ae9bc59a80b9b23817b53348b3a2a",
+   "choice": 18,
+   "nonce": "d2c68246a7d3f9facaec7443"
+  },
+  {
+   "date": "2026-08-14",
+   "hash": "da5ec7fb11de2341819223a4752fd68849e01411088b99dd0d9225d94a8ae7d7"
   }
  ]
 }
