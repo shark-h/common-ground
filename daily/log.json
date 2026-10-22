@@ -477,7 +477,13 @@
   },
   {
    "date": "2026-10-21",
-   "hash": "8db5b8b55586e4d2f44a166bb1425920213178197b73edfe05ec2ade09a7c128"
+   "hash": "8db5b8b55586e4d2f44a166bb1425920213178197b73edfe05ec2ade09a7c128",
+   "choice": 14,
+   "nonce": "22bcda7ee569767be51f6f7e"
+  },
+  {
+   "date": "2026-10-22",
+   "hash": "d9345dcb1384bd4d21ad5b29e048edade3c19e62724920e9ee418a3ecc550023"
   }
  ]
 }
