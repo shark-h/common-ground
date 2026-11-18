@@ -639,7 +639,13 @@
   },
   {
    "date": "2026-11-17",
-   "hash": "8da34bc36f18f924f194281906919db0fc8e84aeaba1f3334ba74e494788945f"
+   "hash": "8da34bc36f18f924f194281906919db0fc8e84aeaba1f3334ba74e494788945f",
+   "choice": 17,
+   "nonce": "e0bff6a30e2c18f40902b776"
+  },
+  {
+   "date": "2026-11-18",
+   "hash": "06bb2e062c26eeb167f4ea1be655859a847be0ff3b3179781eb55993616a2d3b"
   }
  ]
 }
